@@ -3940,8 +3940,7 @@ end
             -- bla
         end
     end
-]]
-SCRIPT_PARAM_ONOFF = 1
+]]SCRIPT_PARAM_ONOFF = 1
 SCRIPT_PARAM_ONKEYDOWN = 2
 SCRIPT_PARAM_ONKEYTOGGLE = 3
 SCRIPT_PARAM_SLICE = 4
@@ -4088,7 +4087,7 @@ end
 local __SC__OnDraw, __SC__OnWndMsg
 local function __SC__OnLoad()
     if not __SC__OnDraw then
-        function __SC__OnDraw()
+        local function __SC__OnDraw()
             if __SC__init() or Console__IsOpen or GetGame().isOver then return end
             if IsKeyDown(_SC.menuKey) or _SC._changeKey then
                 if _SC.draw.move then
@@ -4125,7 +4124,7 @@ local function __SC__OnLoad()
                 end
             end
             local y1 = _SC.pDraw.y + (_SC.pDraw.cellSize * _SC.masterYp)
-            local function DrawPermaShows(instance)
+            function DrawPermaShows(instance)
 
                 if #instance._permaShow > 0 then
                     for _, varIndex in ipairs(instance._permaShow) do
@@ -4164,7 +4163,7 @@ local function __SC__OnLoad()
         AddDrawCallback(__SC__OnDraw)
     end
     if not __SC__OnWndMsg then
-        function __SC__OnWndMsg(msg, key)
+        local function __SC__OnWndMsg(msg, key)
             if __SC__init() or Console__IsOpen then return end
             local msg, key = msg, key
             if key == _SC.menuKey and _SC.lastKeyState ~= msg then
@@ -4214,7 +4213,7 @@ local function __SC__OnLoad()
                 elseif _SC.menuIndex == 0 then
                     TS_ClickMenu(_SC._Idraw.x, _SC.draw.y + _SC.draw.cellSize)
                 elseif _SC.menuIndex > 0 then
-                    local function CheckOnWndMsg(instance)
+                    function CheckOnWndMsg(instance)
                         if CursorIsUnder(instance._x, _SC.draw.y, _SC.draw.width, instance._height) then
                             instance:OnWndMsg()
                         elseif instance._subMenuIndex > 0 then
@@ -4241,7 +4240,7 @@ local function __SC__OnLoad()
                     _SC._listInstance = false
                 end
             else
-                local function CheckOnWndMsg(instance)
+                function CheckOnWndMsg(instance)
 
                     for _, param in ipairs(instance._param) do
                         if param.pType == SCRIPT_PARAM_ONKEYTOGGLE and key == param.key and msg == KEY_DOWN then
@@ -4405,7 +4404,8 @@ end
 function scriptConfig:_DrawParam(varIndex)
     local pVar = self._param[varIndex].var
     DrawLine(self._x - _SC.draw.border, self._y + _SC.draw.midSize, self._x + _SC.draw.row3 - _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
-    DrawText(self._param[varIndex].text, _SC.draw.fontSize, self._x, self._y, _SC.color.grey)
+	DrawText(self._param[varIndex].text, _SC.draw.fontSize, self._x, self._y, _SC.color.grey)
+	
     if self._param[varIndex].pType == SCRIPT_PARAM_SLICE then
         DrawText(tostring(self[pVar]), _SC.draw.fontSize, self._x + _SC.draw.row2, self._y, _SC.color.grey)
         DrawLine(self._x + _SC.draw.row3, self._y + _SC.draw.midSize, self._x + _SC.draw.width + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, _SC.color.lgrey)
@@ -4432,13 +4432,21 @@ function scriptConfig:_DrawParam(varIndex)
         DrawLine(self._x + _SC.draw.row3, self._y + _SC.draw.midSize, self._x + _SC.draw.width + _SC.draw.border, self._y + _SC.draw.midSize, _SC.draw.cellSize, (self[pVar] and _SC.color.green or _SC.color.lgrey))
         DrawText((self[pVar] and "        ON" or "        OFF"), _SC.draw.fontSize, self._x + _SC.draw.row3 + _SC.draw.border, self._y, _SC.color.grey)
     end
+	
+	if self._param[varIndex].pTooltip then
+		local tooltip = self._param[varIndex].pTooltip
+		local wts = WorldToScreen(mousePos)
+		if (wts.x > self._x - _SC.draw.border) and (wts.x < self._x + _SC.draw.row3 - _SC.draw.border) and (wts.y < self._y + _SC.draw.midSize+_SC.draw.cellSize/2) and (wts.y > self._y + _SC.draw.midSize-_SC.draw.cellSize/2) then		
+			DrawLine(wts.x - _SC.draw.border , wts.y + _SC.draw.midSize - _SC.draw.cellSize, --[[wts.x + _SC.draw.row3 - _SC.draw.border--]] wts.x + GetTextArea(tooltip, _SC.draw.fontSize).x, wts.y + _SC.draw.midSize - _SC.draw.cellSize, _SC.draw.cellSize, _SC.color.grey)
+			DrawText(tooltip, _SC.draw.fontSize, wts.x, wts.y - _SC.draw.cellSize, _SC.color.ivory)
+			
+		end
+	end
     self._y = self._y + _SC.draw.cellSize
 end
 
-
-
 function scriptConfig:load()
-    local function sensitiveMerge(base, t)
+    function sensitiveMerge(base, t)
         for i, v in pairs(t) do
             if type(base[i]) == type(v) then
                 if type(v) == "table" then sensitiveMerge(base[i], v)
@@ -4472,9 +4480,6 @@ function scriptConfig:save()
     for i, ts in pairs(self._tsInstances) do
         content._tsInstances[i] = { mode = ts.mode }
     end
-    -- for i,pShow in pairs(self._permaShow) do
-    -- table.insert (content, "_permaShow."..i.."="..tostring(pShow))
-    -- end
     __SC__save(self.name, content)
 end
 
@@ -4542,6 +4547,38 @@ function scriptConfig:OnWndMsg()
         end
         y1 = y1 + _SC.draw.cellSize
     end
+end
+
+function scriptConfig:addParamwTooltip(pVar, pText, pTooltip, pType, defaultValue, a, b, c)
+	 assert(type(pVar) == "string" and type(pText) == "string" and type(pType) == "number", "addParam: wrong argument types (<string>, <string>, <pType> expected)")
+    assert(string.find(pVar, "[^%a%d]") == nil, "addParam: pVar should contain only char and number")
+    --assert(self[pVar] == nil, "addParam: pVar should be unique, already existing " .. pVar)
+    local newParam = { var = pVar, text = pText, pType = pType, pTooltip = pTooltip}
+    if pType == SCRIPT_PARAM_ONOFF then
+        assert(type(defaultValue) == "boolean", "addParam: wrong argument types (<boolean> expected)")
+    elseif pType == SCRIPT_PARAM_COLOR then
+        assert(type(defaultValue) == "table", "addParam: wrong argument types (<table> expected)")
+        assert(#defaultValue == 4, "addParam: wrong argument ({a,r,g,b} expected)")
+    elseif pType == SCRIPT_PARAM_ONKEYDOWN or pType == SCRIPT_PARAM_ONKEYTOGGLE then
+        assert(type(defaultValue) == "boolean" and type(a) == "number", "addParam: wrong argument types (<boolean> <number> expected)")
+        newParam.key = a
+    elseif pType == SCRIPT_PARAM_SLICE then
+        assert(type(defaultValue) == "number" and type(a) == "number" and type(b) == "number" and (type(c) == "number" or c == nil), "addParam: wrong argument types (pVar, pText, pType, defaultValue, valMin, valMax, decimal) expected")
+        newParam.min = a
+        newParam.max = b
+        newParam.idc = c or 0
+        newParam.cursor = 0
+    elseif pType == SCRIPT_PARAM_LIST then
+        assert(type(defaultValue) == "number" and type(a) == "table", "addParam: wrong argument types (pVar, pText, pType, defaultValue, listTable) expected")
+        newParam.listTable = a
+        newParam.min = 1
+        newParam.max = #a
+        newParam.cursor = 0
+    end
+    self[pVar] = defaultValue
+    table.insert(self._param, newParam)
+    __SC__saveMaster()
+    self:load()
 end
 
 -- -- Alerter Class
